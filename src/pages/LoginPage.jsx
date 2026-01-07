@@ -2,8 +2,13 @@ import React, { useState } from "react";
 import { useScrollToTop } from "../hooks/useScrollToTop";
 import authApi from "../api/authApi";
 import { toast } from "../ui/toast";
+import { useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
+
 
 export default function LoginPage({ onClose }) {
+  
+  const { loginUser } = useContext(AuthContext); 
   useScrollToTop();
 
   const [formData, setFormData] = useState({
@@ -48,12 +53,13 @@ export default function LoginPage({ onClose }) {
         username: result.data.username,
         fullname: result.data.fullname,
         role: result.data.role,
+        avatar : result.data.avatar,
       };
 
-      // Lưu localStorage
-      localStorage.setItem("token", result.data.token);
-      localStorage.setItem("user", JSON.stringify(userData));
-      localStorage.setItem("isAuthenticated", "true");
+      loginUser({
+      token: result.data.token,
+      user: userData
+    });
 
         toast.success(`Đăng nhập thành công ! Chào mừng giảng viên ${userData.fullname}`);
 

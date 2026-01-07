@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import profileApi from "../api/profileApi";
+import { buildFileUrl } from "../utils/fileUrl";
+import { useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
 import {
   Camera,
   Save,
@@ -16,8 +19,7 @@ import { toast } from "../ui/toast";
 
 export default function ProfilePage() {
   useScrollToTop();
-
-  /* ===================== STATE ===================== */
+  const { updateUser } = useContext(AuthContext);
   const [form, setForm] = useState({
     fullname: "",
     email: "",
@@ -29,20 +31,19 @@ export default function ProfilePage() {
 
   const [isEditing, setIsEditing] = useState(false);
   const fileInputRef = useRef(null);
-
-  /* ===================== LOAD PROFILE ===================== */
   useEffect(() => {
     const loadProfile = async () => {
       try {
         const res = await profileApi.getMe();
         const p = res.data.data;
+        updateUser(p);
 
         setForm({
           fullname: p.fullname || "",
           email: p.email || "",
           phone: p.phone || "",
           address: p.address || "",
-          avatarPreview: p.avatar || "/assets/images/default_teacher.jpg",
+          avatarPreview: buildFileUrl(p.avatar),
           avatarFile: null,
         });
       } catch (e) {
@@ -95,13 +96,14 @@ export default function ProfilePage() {
 
       const res = await profileApi.updateProfile(fd);
       const updated = res.data.data;
+      updateUser(updated);
 
       setForm({
         fullname: updated.fullname,
         email: updated.email,
         phone: updated.phone,
         address: updated.address,
-        avatarPreview: updated.avatar,
+        avatarPreview: buildFileUrl(updated.avatar),
         avatarFile: null,
       });
 
@@ -121,16 +123,17 @@ export default function ProfilePage() {
         <div className="lg:col-span-1 bg-white rounded-3xl shadow-xl p-6 text-center">
           <div
             className="relative mx-auto w-36 h-36 rounded-full overflow-hidden cursor-pointer group"
-            onClick={handleAvatarClick}
+            onClick={isEditing ? handleAvatarClick : undefined}
           >
             <img
               src={form.avatarPreview}
               alt={form.fullname}
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition">
+            <div className={`absolute inset-0 bg-black/60 ${isEditing ? "opacity-0 group-hover:opacity-100" : "hidden"} flex items-center justify-center transition`}>
               <Camera className="text-white w-8 h-8" />
             </div>
+
             <input
               ref={fileInputRef}
               type="file"
@@ -156,7 +159,7 @@ export default function ProfilePage() {
         {/* RIGHT FORM */}
         <div className="lg:col-span-3 bg-white rounded-3xl shadow-xl p-8">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Thông tin cá nhân</h1>
+            <h1 className="text-2xl font-bold">Thông tin giảng viên</h1>
             <button
               onClick={() => setIsEditing(!isEditing)}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white"
@@ -234,9 +237,8 @@ function Input({ label, icon, value, onChange, disabled }) {
           disabled={disabled}
           value={value}
           onChange={onChange}
-          className={`w-full pl-10 pr-3 py-2 border rounded-lg ${
-            disabled ? "bg-gray-100" : "bg-white"
-          }`}
+          className={`w-full pl-10 pr-3 py-2 border rounded-lg ${disabled ? "bg-gray-100" : "bg-white"
+            }`}
         />
       </div>
     </div>
