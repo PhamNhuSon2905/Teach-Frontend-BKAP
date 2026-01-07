@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { buildFileUrl } from "../utils/fileUrl";
 import {
   AppBar,
   Toolbar,
@@ -31,89 +32,19 @@ import {
   CalendarToday
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useContext } from "react"; // Thêm import useContext
-import { AuthContext } from "../context/AuthContext"; // Thêm import AuthContext
+import { useContext } from "react";
+import { AuthContext } from "../context/AuthContext";
 import logo from "../assets/images/images.png";
-import { toast } from "../ui/toast"; // Import toast mới
+import { toast } from "../ui/toast";
 
 const Navbar = ({ setShowLogin }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logoutUser } = useContext(AuthContext); // Sử dụng context
 
-  // ===== STATE =====
-  const [localUser, setLocalUser] = useState(null); // Đổi tên để tránh trùng với user từ context
-
-  // ===== LOAD USER TỪ LOCALSTORAGE KHI COMPONENT MOUNT =====
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      try {
-        setLocalUser(JSON.parse(userData));
-        console.log('✅ User loaded from localStorage:', JSON.parse(userData));
-      } catch (e) {
-        console.error('❌ Error parsing user from localStorage:', e);
-      }
-    }
-
-    // Listen cho custom event userLoginSuccess từ LoginPage
-    const handleUserLogin = (event) => {
-      console.log('🔔 userLoginSuccess event received:', event.detail);
-      setLocalUser(event.detail);
-    };
-
-    window.addEventListener('userLoginSuccess', handleUserLogin);
-
-    // Listen cho storage change từ localStorage (khác tab)
-    const handleStorageChange = () => {
-      const updatedUser = localStorage.getItem('user');
-      if (updatedUser) {
-        try {
-          setLocalUser(JSON.parse(updatedUser));
-          console.log('✅ User updated from storage event:', JSON.parse(updatedUser));
-        } catch (e) {
-          console.error('❌ Error parsing updated user:', e);
-        }
-      } else {
-        setLocalUser(null);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('userLoginSuccess', handleUserLogin);
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
+  const { user: currentUser, logoutUser } = useContext(AuthContext);
 
   // ===== MENU NGANG CƠ BẢN =====
   const baseMenuItems = ["Trang chủ", "Bài giảng", "Giới thiệu", "Liên hệ"];
-
-  // ===== MENU THEO ROLE =====
-  const getRoleSpecificMenu = () => {
-    const currentUser = user || localUser; // Ưu tiên user từ context
-    if (!currentUser) return [];
-
-    const role = currentUser.role?.toUpperCase();
-
-    if (role === "INSTRUCTOR") {
-      return [
-        { label: "Dashboard", path: "/teacher/dashboard", icon: <Dashboard /> },
-        { label: "Bài giảng", path: "/teacher/lessons", icon: <VideoLibrary /> },
-        { label: "Lịch dạy", path: "/teacher/schedule", icon: <CalendarToday /> },
-        { label: "Thông báo", path: "/teacher/notifications", icon: <Notifications /> },
-      ];
-    }
-
-    if (role === "ADMIN") {
-      return [
-        { label: "Dashboard", path: "/admin/dashboard", icon: <Dashboard /> },
-        { label: "Quản lý người dùng", path: "/admin/users", icon: <AccountCircle /> },
-      ];
-    }
-
-    return [];
-  };
 
   // ===== DROPDOWN AVATAR =====
   const [anchorEl, setAnchorEl] = useState(null);
@@ -152,35 +83,29 @@ const Navbar = ({ setShowLogin }) => {
 
   const handleMenuClick = (item) => {
 
-  if (item === "Bài giảng") {
+    if (item === "Bài giảng") {
 
-    const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token");
 
-    if (!token) {
-      toast.warning("Vui lòng đăng nhập để truy cập !");
-      setShowLogin(true);
+      if (!token) {
+        toast.warning("Vui lòng đăng nhập để truy cập !");
+        setShowLogin(true);
+        return;
+      }
+
+      // đã login
+      navigate("/teacher/lessons");
       return;
     }
 
-    // đã login
-    navigate("/teacher/lessons");
-    return;
-  }
+    // các menu khác giữ nguyên
+    const routeMap = {
+      "Trang chủ": "/",
+      "Giới thiệu": "/about",
+      "Liên hệ": "/contact",
+    };
 
-  // các menu khác giữ nguyên
-  const routeMap = {
-    "Trang chủ": "/",
-    "Giới thiệu": "/about",
-    "Liên hệ": "/contact",
-  };
-
-  navigate(routeMap[item] || "/");
-};
-
-
-  const handleRoleMenuClick = (menuItem) => {
-    navigate(menuItem.path);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    navigate(routeMap[item] || "/");
   };
 
   const handleProfile = () => {
@@ -191,7 +116,6 @@ const Navbar = ({ setShowLogin }) => {
 
   const handleLogout = () => {
     logoutUser();
-    setLocalUser(null); // Xóa user local
     toast.info("Đăng xuất tài khoản thành công !");
     navigate('/');
   };
@@ -208,12 +132,6 @@ const Navbar = ({ setShowLogin }) => {
     return currentPath === map[item];
   };
 
-  const getRoleActive = (menuItem) => {
-    return currentPath === menuItem.path;
-  };
-
-  const currentUser = user || localUser; // Ưu tiên user từ context
-  const roleSpecificMenu = getRoleSpecificMenu();
 
   return (
     <>
@@ -263,7 +181,7 @@ const Navbar = ({ setShowLogin }) => {
               />
             </Box>
 
-            {/* ===== MENU CHÍNH + MENU ROLE ===== */}
+
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               {/* Menu cơ bản */}
               <Box
@@ -303,49 +221,6 @@ const Navbar = ({ setShowLogin }) => {
                   );
                 })}
               </Box>
-
-              {/* Menu theo role */}
-              {roleSpecificMenu.length > 0 && (
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    backgroundColor: "#e3f2fd",
-                    px: 2,
-                    py: 0.7,
-                    borderRadius: "24px",
-                    border: "1px solid #bbdefb"
-                  }}
-                >
-                  {roleSpecificMenu.map((menuItem) => {
-                    const isActive = getRoleActive(menuItem);
-                    return (
-                      <Button
-                        key={menuItem.path}
-                        onClick={() => handleRoleMenuClick(menuItem)}
-                        startIcon={menuItem.icon}
-                        sx={{
-                          color: isActive ? "#1976d2" : "#1565c0",
-                          fontWeight: isActive ? 700 : 600,
-                          fontSize: "13px",
-                          textTransform: "none",
-                          borderRadius: "20px",
-                          backgroundColor: isActive
-                            ? "rgba(25,118,210,0.12)"
-                            : "transparent",
-                          transition: "all 0.2s ease",
-                          "&:hover": {
-                            backgroundColor: "rgba(25,118,210,0.15)",
-                          },
-                        }}
-                      >
-                        {menuItem.label}
-                      </Button>
-                    );
-                  })}
-                </Box>
-              )}
             </Box>
 
             {/* ===== LOGIN / AVATAR ===== */}
@@ -367,24 +242,26 @@ const Navbar = ({ setShowLogin }) => {
               ) : (
                 <>
                   <Chip
-                    label={currentUser.role === 'ADMIN' ? 'Quản trị viên' : 'Giảng viên'}
+                    label="Giảng viên"
                     size="small"
-                    color={currentUser.role === 'ADMIN' ? "error" : "success"}
+                    color="success"
                     variant="outlined"
                   />
-
                   <IconButton onClick={handleAvatarClick}>
                     <Avatar
+                      src={buildFileUrl(currentUser.avatar)}
+                      alt={currentUser.fullname}
                       sx={{
                         width: 40,
                         height: 40,
-                        bgcolor: currentUser.role?.toUpperCase() === 'ADMIN' ? '#f44336' :
-                          currentUser.role?.toUpperCase() === 'INSTRUCTOR' ? '#1976d2' :
-                            '#4caf50'
+                        border: "2px solid #fff",
+                        bgcolor: "#1976d2",
                       }}
                     >
-                      {currentUser.username?.charAt(0).toUpperCase()}
+                      {currentUser.fullname?.charAt(0).toUpperCase()}
                     </Avatar>
+
+
                   </IconButton>
 
                   <Menu
@@ -409,9 +286,7 @@ const Navbar = ({ setShowLogin }) => {
                       sx={{
                         px: 2.5,
                         py: 2,
-                        background: currentUser.role === 'ADMIN' 
-                          ? "linear-gradient(135deg, #d32f2f 0%, #f44336 100%)"
-                          : "linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)",
+                        background : "linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)",
                         color: "#fff",
                         display: "flex",
                         alignItems: "center",
@@ -419,6 +294,8 @@ const Navbar = ({ setShowLogin }) => {
                       }}
                     >
                       <Avatar
+                        src={currentUser?.avatar ? buildFileUrl(currentUser.avatar) : ""}
+                        alt={currentUser?.fullname}
                         sx={{
                           width: 48,
                           height: 48,
@@ -428,6 +305,7 @@ const Navbar = ({ setShowLogin }) => {
                       >
                         {(currentUser.fullname || currentUser.username)?.charAt(0).toUpperCase()}
                       </Avatar>
+
 
                       <Box>
                         <Typography
@@ -442,7 +320,7 @@ const Navbar = ({ setShowLogin }) => {
                         </Typography>
 
                         <Typography variant="caption" sx={{ opacity: 0.85 }}>
-                          {currentUser.role === 'ADMIN' ? 'Quản trị viên' : 'Giảng viên'}
+                          Giảng viên
                         </Typography>
                       </Box>
                     </Box>
