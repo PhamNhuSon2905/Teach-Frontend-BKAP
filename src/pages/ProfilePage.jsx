@@ -47,7 +47,9 @@ export default function ProfilePage() {
           avatarFile: null,
         });
       } catch (e) {
-        toast.error("Không tải được thông tin hồ sơ");
+        if (e.response?.status !== 401) {
+          toast.error("Không tải được thông tin hồ sơ");
+        }
       }
     };
 
@@ -118,7 +120,6 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 py-8">
       <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
-
         {/* LEFT PROFILE CARD */}
         <div className="lg:col-span-1 bg-white rounded-3xl shadow-xl p-6 text-center">
           <div
@@ -130,7 +131,11 @@ export default function ProfilePage() {
               alt={form.fullname}
               className="w-full h-full object-cover"
             />
-            <div className={`absolute inset-0 bg-black/60 ${isEditing ? "opacity-0 group-hover:opacity-100" : "hidden"} flex items-center justify-center transition`}>
+            <div
+              className={`absolute inset-0 bg-black/60 ${
+                isEditing ? "opacity-0 group-hover:opacity-100" : "hidden"
+              } flex items-center justify-center transition`}
+            >
               <Camera className="text-white w-8 h-8" />
             </div>
 
@@ -178,12 +183,7 @@ export default function ProfilePage() {
               onChange={onChange("fullname")}
             />
 
-            <Input
-              label="Email"
-              icon={<Mail />}
-              value={form.email}
-              disabled
-            />
+            <Input label="Email" icon={<Mail />} value={form.email} disabled />
 
             <Input
               label="Số điện thoại"
@@ -237,8 +237,9 @@ function Input({ label, icon, value, onChange, disabled }) {
           disabled={disabled}
           value={value}
           onChange={onChange}
-          className={`w-full pl-10 pr-3 py-2 border rounded-lg ${disabled ? "bg-gray-100" : "bg-white"
-            }`}
+          className={`w-full pl-10 pr-3 py-2 border rounded-lg ${
+            disabled ? "bg-gray-100" : "bg-white"
+          }`}
         />
       </div>
     </div>
