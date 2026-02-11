@@ -8,7 +8,7 @@ const { pathToFileURL } = require('url');
 // Bỏ qua lỗi SSL
 app.commandLine.appendSwitch('ignore-certificate-errors');
 
-// Đăng ký giao thức "lesson://" có quyền hạn giống như HTTP để load được tài nguyên (ảnh, css, js)
+// Đăng ký giao thức "lesson://"
 protocol.registerSchemesAsPrivileged([
   { scheme: 'lesson', privileges: { bypassCSP: true, stream: true, supportFetchAPI: true, secure: true, standard: true } }
 ]);
@@ -33,6 +33,9 @@ function createWindow() {
     },
   });
 
+  // 🔥 SỬA ĐỔI Ở ĐÂY: Dòng này sẽ xóa thanh menu (File, Edit,...)
+  mainWindow.setMenu(null); 
+
   if (app.isPackaged) {
     mainWindow.loadURL(`file://${path.join(__dirname, 'index.html')}`);
   } else {
@@ -40,22 +43,20 @@ function createWindow() {
   }
 }
 
-  app.whenReady().then(() => {
+app.whenReady().then(() => {
     
     protocol.handle('lesson', (request) => {
       // 1. Lấy phần đường dẫn sau chữ "lesson://"
       let url = request.url.replace('lesson://', '');
       
-      // 🔥 FIX LỖI QUAN TRỌNG: Cắt bỏ các tham số query (?v=...) và hash (#...)
-      // Vì Windows không hiểu file tên là "player.js?v=123"
+      // Fix lỗi query và hash
       const queryIndex = url.indexOf('?');
       if (queryIndex !== -1) url = url.substring(0, queryIndex);
 
       const hashIndex = url.indexOf('#');
       if (hashIndex !== -1) url = url.substring(0, hashIndex);
 
-      // 2. Xử lý trường hợp trình duyệt tự thêm dấu "/" ở đầu
-      // Ví dụ: lesson:///lesson_49/... -> Cần bỏ dấu / đầu tiên đi
+      // 2. Xử lý dấu "/" ở đầu
       if (url.startsWith('/') || url.startsWith('\\')) {
         url = url.substring(1);
       }
@@ -64,10 +65,8 @@ function createWindow() {
       const decodedUrl = decodeURIComponent(url);
 
       // 4. Tạo đường dẫn tuyệt đối
-      // Dùng path.normalize để xử lý các dấu gạch chéo thừa
       const filePath = path.normalize(path.join(OFFLINE_DIR, decodedUrl));
 
-      // DEBUG: In ra console xem nó đang load file nào (bạn bật console lên sẽ thấy)
       console.log('>> Loading file:', filePath);
 
       // 5. Trả về file thật
@@ -75,7 +74,7 @@ function createWindow() {
     });
 
     createWindow();
-  });
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -89,7 +88,7 @@ app.on('activate', () => {
   }
 });
 
-
+// --- Các hàm hỗ trợ và IPC ---
 
 function findEntryFile(folderPath) {
   if (fs.existsSync(path.join(folderPath, 'index.html'))) return path.join(folderPath, 'index.html');
@@ -112,20 +111,11 @@ function findEntryFile(folderPath) {
   return null;
 }
 
-// Input: C:\Users\Admin\...\offline_lessons\lesson_49\sub\index.html
-// Output: lesson://lesson_49/sub/index.html
 function convertToCustomUrl(fullPath) {
-  // 1. Lấy phần đường dẫn tương đối tính từ OFFLINE_DIR
   const relativePath = path.relative(OFFLINE_DIR, fullPath);
-  
-  // 2. Chuyển đổi dấu "\" (Windows) thành "/" (URL)
   const normalizedPath = relativePath.split(path.sep).join('/');
-  
-  // 3. Ghép vào scheme
   return `lesson://${normalizedPath}`;
 }
-
-
 
 ipcMain.handle('check-file-exists', async (event, { lessonId }) => {
   try {
@@ -135,7 +125,6 @@ ipcMain.handle('check-file-exists', async (event, { lessonId }) => {
     const entryFile = findEntryFile(folderPath);
     
     if (entryFile) {
-
       return convertToCustomUrl(entryFile);
     }
     return null;
@@ -177,7 +166,6 @@ ipcMain.handle('download-and-unzip', async (event, { url, lessonId }) => {
     }
 
     console.log('Hoàn tất, tạo đường dẫn ảo...');
-    // 🔥 THAY ĐỔI: Trả về URL ảo
     return convertToCustomUrl(finalEntryFile);
 
   } catch (error) {
