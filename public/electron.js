@@ -33,7 +33,6 @@ function createWindow() {
     },
   });
 
-  // 🔥 SỬA ĐỔI Ở ĐÂY: Dòng này sẽ xóa thanh menu (File, Edit,...)
   mainWindow.setMenu(null); 
 
   if (app.isPackaged) {

@@ -27,8 +27,8 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import lessonApi from "../../api/lessonApi";
 import localforage from "localforage";
-import JSZip from "jszip"; 
-import { toast } from "../../ui/toast"; 
+import JSZip from "jszip";
+import { toast } from "../../ui/toast";
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -154,27 +154,27 @@ export default function InstructorLessonDetailsPage() {
       const { ipcRenderer } = window.require('electron');
 
       // 1. KIỂM TRA TRƯỚC: File này đã tải về máy chưa?
-    
+
       const existingPath = await ipcRenderer.invoke('check-file-exists', { lessonId: file.id });
 
       if (existingPath) {
-     
+
         console.log("File đã có sẵn, mở Offline:", existingPath);
-        
+
         setPreview({
           type: "HTML",
           url: existingPath,
           isOffline: true
         });
-        
+
         toast.success("Đang xem chế độ Offline (Từ máy tính)");
-        return; 
+        return;
       }
 
       // Kiểm tra mạng trước khi tải
       if (!navigator.onLine) {
-         toast.warning("Bài giảng này chưa được tải về máy! Vui lòng kết nối mạng để tải lần đầu tiên.");
-         return;
+        toast.warning("Bài giảng này chưa được tải về máy! Vui lòng kết nối mạng để tải lần đầu tiên.");
+        return;
       }
 
       const API_BASE = process.env.REACT_APP_API_URL || "https://lms.bkapai.vn";
@@ -182,16 +182,16 @@ export default function InstructorLessonDetailsPage() {
 
       // Nếu là file ZIP mà đường dẫn trong DB không có đuôi .zip -> Tự động thêm vào
       if (file.fileType === 'ZIP' || file.fileType === 'RAR') {
-          const lowerUrl = fileUrl.toLowerCase();
-          if (!lowerUrl.endsWith('.zip') && !lowerUrl.endsWith('.rar')) {
-              fileUrl += '.zip'; 
-          }
+        const lowerUrl = fileUrl.toLowerCase();
+        if (!lowerUrl.endsWith('.zip') && !lowerUrl.endsWith('.rar')) {
+          fileUrl += '.zip';
+        }
       }
 
-  
+
       const fullUrl = fileUrl.startsWith("http") ? fileUrl : `${API_BASE}${fileUrl}`;
 
- 
+
       console.log("Link tải gửi xuống Electron:", fullUrl);
 
       toast.info("Đang tải tài liệu về máy (Lần đầu)...");
@@ -208,7 +208,7 @@ export default function InstructorLessonDetailsPage() {
         url: localFilePath,
         isOffline: true
       });
-      
+
       toast.success("Tải xong! Từ giờ bạn có thể xem Offline.");
 
     } catch (error) {
@@ -222,7 +222,7 @@ export default function InstructorLessonDetailsPage() {
 
 
   const handleViewFile = async (file) => {
- 
+
     if (isElectron()) {
       if (file.fileType === "ZIP" || file.fileType === "RAR") {
         await handleViewOfflineElectron(file);
@@ -234,16 +234,29 @@ export default function InstructorLessonDetailsPage() {
       return;
     }
 
-  
+
 
     // A. PDF 
+
     if (file.fileType === "PDF") {
       const offlineBlob = await localforage.getItem(`file_${file.id}`);
+
       if (offlineBlob) {
-        setPreview({ type: "PDF", url: URL.createObjectURL(offlineBlob), isOffline: true });
+        const pdfUrl = URL.createObjectURL(offlineBlob);
+
+        setPreview({
+          type: "PDF",
+          url: `${pdfUrl}#toolbar=1&navpanes=0&scrollbar=1&zoom=100`,
+          isOffline: true
+        });
       } else {
-        setPreview({ type: "PDF", url: `${API_URL}${file.filePath}`, isOffline: false });
+        setPreview({
+          type: "PDF",
+          url: `${API_URL}${file.filePath}#toolbar=1&navpanes=0&scrollbar=1&zoom=100`,
+          isOffline: false
+        });
       }
+
       return;
     }
 
@@ -253,7 +266,7 @@ export default function InstructorLessonDetailsPage() {
 
       if (offlineBlob) {
         toast.error("Trình duyệt không hỗ trợ xem Offline file này vui lòng xóa đi và xem Online!", {
-          position: "bottom", 
+          position: "bottom",
           autoClose: 5000,
         });
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -349,12 +362,12 @@ export default function InstructorLessonDetailsPage() {
               position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
               width: '100vw', height: '100vh', zIndex: 99999,
               m: '0 !important', p: '0 !important',
-              borderRadius: 0, border: 'none', background: '#000', overflow: 'hidden'
+              borderRadius: 0, border: 'none', background: '#fff', overflow: 'hidden'
             } : {
               flex: 1,
 
               minHeight: { xs: "500px", md: "720px" },
-              height: "auto",
+              height: preview?.type === "HTML" ? "auto" : { xs: "500px", md: "720px" },
               display: "flex",
               flexDirection: "column",
               background: "#fff",
@@ -417,7 +430,7 @@ export default function InstructorLessonDetailsPage() {
                   src={preview.url}
                   title="lesson-preview"
                   style={{
-                    border: "none", width: "100%", height: "100%",
+                    border: "none", width: "100%", height: preview.type === "HTML" ? "100vh" : "720px",
                     display: "block", background: "#fff"
                   }}
                   allowFullScreen
@@ -470,7 +483,7 @@ export default function InstructorLessonDetailsPage() {
                       '&:hover': { boxShadow: '0 4px 10px rgba(0,0,0,0.05)', borderColor: '#bdbdbd' }
                     }}
                   >
-      
+
                     <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 1.5 }}>
                       <Box sx={{
                         width: 40, height: 40,
@@ -488,7 +501,7 @@ export default function InstructorLessonDetailsPage() {
 
                     <Divider flexItem />
 
-               
+
                     <Stack direction="row" spacing={1} sx={{ width: '100%', justifyContent: 'flex-end' }}>
                       <Button
                         size="small"
