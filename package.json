@@ -2,8 +2,7 @@
   "name": "digital-library-frontend",
   "version": "0.1.0",
   "private": true,
-  "main": "public/electron.js", 
-  "homepage": "./",
+  "main": "public/electron.js",
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
@@ -24,10 +23,11 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build:web": "cross-env PUBLIC_URL=/ react-scripts build",
+    "build:electron": "cross-env PUBLIC_URL=./ react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "electron:pack": "npm run build && electron-builder -w -c.extraMetadata.main=build/electron.js"
+    "electron:pack": "npm run build:electron && electron-builder -w -c.extraMetadata.main=build/electron.js"
   },
   "build": {
     "appId": "com.digital.library",
